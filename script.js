@@ -1,227 +1,184 @@
-const DEFAULT_MAX_WEIGHTS = 40;
-let countModified = false;
+/* Base & glassmorphism theme */
+* {
+  margin: 0; padding: 0; box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+body {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a4b8e, #1a4b8e);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.container {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 2rem;
+  max-width: 900px; width: 100%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.header { text-align: center; margin-bottom: 2rem; }
+.header h1 {
+  color: #fff; font-size: 2rem; margin-bottom: .5rem;
+  display: flex; align-items: center; justify-content: center;
+  gap:1rem; flex-wrap: wrap;
+}
+.header p { color: rgba(255,255,255,0.9); font-weight:300; font-size:.9rem; }
 
-// DOM Elements
-const tankNameInput    = document.getElementById('tank-name');
-const countInput       = document.getElementById('count');
-const warning          = document.getElementById('warning');
-const weightsContainer = document.getElementById('weights-container');
-const addRowButton     = document.getElementById('add-row');
-const printBtn         = document.getElementById('print-btn');
-const whatsappBtn      = document.getElementById('whatsapp-btn');
-const copyBtn          = document.getElementById('copy-btn');
-const pasteBtn         = document.getElementById('paste-btn');
-const totalWeightEl    = document.getElementById('total-weight');
-const netWeightEl      = document.getElementById('net-weight');
-const finalWeightEl    = document.getElementById('final-weight');
-const numberResultEl   = document.getElementById('number-result');
-
-// Print modal elements
-const printOptionsModal = document.getElementById('print-options-modal');
-const closePrintModal   = document.getElementById('close-print-modal');
-const printBWBtn        = document.getElementById('print-bw');
-const printColorBtn     = document.getElementById('print-color');
-
-function initializeWeights() {
-  for (let i = 0; i < DEFAULT_MAX_WEIGHTS; i++) addWeightRow();
+.input-group-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap:1.5rem;
+  margin-bottom:2rem;
+}
+.input-group label {
+  display:block; color: rgba(255,255,255,0.9);
+  margin-bottom:.5rem; font-size:.9rem;
+}
+input[type="text"], input[type="number"], select {
+  width:100%; padding:.8rem; border:none; border-radius:10px;
+  background: rgba(255,255,255,0.1); color:#fff; font-size:1rem;
+  transition:.3s;
+}
+input:focus, select:focus {
+  outline:none; background: rgba(255,255,255,0.2);
+  box-shadow: 0 0 0 2px #2a9d8f;
+}
+.warning {
+  display:none; margin-top:1rem; font-size:.9rem;
+  color:#ff6b6b; background:rgba(255,107,107,0.1);
+  padding:.8rem; border-radius:10px;
 }
 
-function addWeightRow() {
-  const row = document.createElement('div');
-  row.className = 'weight-row';
-  row.setAttribute('data-filled', 'false');
-  row.innerHTML = `
-    <span>${weightsContainer.children.length + 1}</span>
-    <input type="number" class="weight-input" value="0" min="0" step="0.1">
-    <select class="tray-type">
-      <option value="2">Double Tray</option>
-      <option value="1">Single Tray</option>
-    </select>
-    <button class="delete-btn">×</button>
-  `;
-  weightsContainer.appendChild(row);
+.weights-table {
+  background: rgba(255,255,255,0.05);
+  border-radius:15px; padding:1rem;
+  margin-bottom:1.5rem; overflow-x:auto;
+}
+.table-header, .weight-row {
+  display: grid; grid-template-columns: 60px minmax(120px,1fr) 130px 50px;
+  gap:1rem; padding:.8rem; min-width:500px;
+}
+.table-header { color: rgba(255,255,255,0.8); margin-bottom:.5rem; }
+.weight-row {
+  background: rgba(255,255,255,0.05); border-radius:10px;
+  margin-bottom:.5rem; transition:.3s;
+}
+.weight-row input, .weight-row select {
+  background: transparent; border:none; color:#fff;
+}
+.delete-btn {
+  background:none; border:none; color:#ff6b6b; font-size:1.2rem;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+#add-row {
+  width:100%; padding:.5rem; background:#2a9d8f; color:#fff;
+  border:none; border-radius:10px; font-size:1rem;
+  cursor:pointer; margin-top:1rem;
+}
+#add-row:hover { background:#238f6a; }
 
-  const weightInput = row.querySelector('.weight-input');
-  const traySelect  = row.querySelector('.tray-type');
-  const deleteBtn   = row.querySelector('.delete-btn');
-
-  weightInput.addEventListener('input', () => {
-    updateCalculations();
-    updateRowDataFilled(row);
-  });
-  traySelect.addEventListener('change', updateCalculations);
-  deleteBtn.addEventListener('click', () => {
-    row.remove();
-    updateRowNumbers();
-    updateCalculations();
-  });
+.results-section {
+  background: rgba(255,255,255,0.05);
+  border:2px solid rgba(255,255,255,0.4);
+  border-radius:15px; padding:1.5rem; margin-top:2rem;
+}
+.result-item {
+  display:flex; justify-content:space-between; align-items:center;
+  background:rgba(255,255,255,0.05); border-radius:10px;
+  padding:.8rem; margin-bottom:.5rem; flex-wrap:wrap; gap:.5rem;
+}
+.result-item input {
+  background:none; border:none; color:#fff; font-size:1rem;
+  text-align:right; flex:1; width:100%;
 }
 
-function updateRowNumbers() {
-  Array.from(weightsContainer.children).forEach((row, idx) => {
-    row.querySelector('span').textContent = idx + 1;
-  });
+.action-buttons {
+  display:flex; flex-wrap:wrap; gap:1rem; justify-content:center;
+  margin-top:2rem;
 }
-
-function updateRowDataFilled(row) {
-  const w = parseFloat(row.querySelector('.weight-input').value);
-  row.setAttribute('data-filled', w > 0 ? 'true' : 'false');
+.action-buttons button {
+  flex:1; min-width:200px; background:#2a9d8f; color:#fff;
+  border:none; border-radius:10px; padding:.8rem 1.2rem;
+  font-size:.9rem; cursor:pointer; display:flex; align-items:center;
+  gap:.5rem; transition:.3s;
 }
+.action-buttons button:hover { background:#238f6a; }
 
-function updateCalculations() {
-  const count = parseInt(countInput.value, 10);
-  let totalW = 0, totalTrays = 0;
-
-  Array.from(weightsContainer.children).forEach(row => {
-    const w = parseFloat(row.querySelector('.weight-input').value) || 0;
-    const f = parseFloat(row.querySelector('.tray-type').value);
-    updateRowDataFilled(row);
-    if (w > 0) {
-      totalW += w;
-      totalTrays += f;
-      row.querySelector('.weight-input').classList.remove('invalid');
-    } else {
-      row.querySelector('.weight-input').classList.add('invalid');
-    }
-  });
-
-  const netW    = totalTrays * 1.8;
-  const finalW  = totalW - netW;
-  const totalN  = (count > 0) ? finalW * count : 0;
-
-  totalWeightEl.value = totalW.toFixed(2);
-  netWeightEl.value   = netW.toFixed(2);
-  finalWeightEl.value = finalW.toFixed(2);
-  numberResultEl.value= totalN.toFixed(2);
-
-  warning.style.display = (count <= 0 && !countModified) ? 'block' : 'none';
+.modal-overlay {
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.6); display:none;
+  align-items:center; justify-content:center; z-index:1000;
 }
-
-// Build the share/copy string
-function generateReportString() {
-  const name   = tankNameInput.value || 'N/A';
-  const cnt    = countInput.value  || '0';
-  const tW     = totalWeightEl.value;
-  const nW     = netWeightEl.value;
-  const fW     = finalWeightEl.value;
-  const tN     = numberResultEl.value;
-
-  let rpt = "🦐 *Aquaculture Harvest Report* 🦐\n";
-  rpt += `🏷️ Tank Name: ${name}\n`;
-  rpt += `🔢 Harvest Count: ${cnt}\n`;
-  rpt += `⚖️ Total Weight: ${tW} kg\n`;
-  rpt += `📏 Net Weight: ${nW} kg\n`;
-  rpt += `📊 Final Weight: ${fW} kg\n`;
-  rpt += `🔢 Total Number: ${tN}\n\n`;
-  rpt += "📋 *Batch Details:*\n";
-
-  Array.from(weightsContainer.children).forEach((row, idx) => {
-    const w = parseFloat(row.querySelector('.weight-input').value);
-    if (w > 0) {
-      const text = row.querySelector('.tray-type')
-                      .selectedOptions[0].text;
-      rpt += `${idx+1}. ${w} kg (${text})\n`;
-    }
-  });
-
-  return rpt;
+.modal {
+  background: rgba(255,255,255,0.1); backdrop-filter: blur(15px);
+  border-radius:20px; padding:1.5rem; width:90%; max-width:500px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.2); color:#fff;
 }
-
-// Action handlers
-addRowButton.addEventListener('click', () => {
-  addWeightRow();
-  updateCalculations();
-});
-
-countInput.addEventListener('input', () => {
-  countModified = true;
-  updateCalculations();
-});
-
-// Print flows
-printBtn.addEventListener('click', () => { printOptionsModal.style.display = 'flex'; });
-closePrintModal.addEventListener('click', () => { printOptionsModal.style.display = 'none'; });
-printBWBtn.addEventListener('click', () => {
-  printOptionsModal.style.display = 'none';
-  generatePrintContent(false);
-  setTimeout(() => window.print(), 300);
-});
-printColorBtn.addEventListener('click', () => {
-  printOptionsModal.style.display = 'none';
-  const orig = document.title;
-  document.title = `${tankNameInput.value || 'Untitled'} - Aquaculture Harvest Report`;
-  generatePrintContent(true);
-  setTimeout(() => {
-    window.print();
-    document.title = orig;
-  }, 300);
-});
-
-// Whatsapp share
-whatsappBtn.addEventListener('click', () => {
-  const txt = encodeURIComponent(generateReportString());
-  window.open(`https://wa.me/?text=${txt}`, '_blank');
-});
-
-// Copy
-copyBtn.addEventListener('click', () => {
-  navigator.clipboard.writeText(generateReportString())
-    .then(() => alert('Report copied to clipboard!'))
-    .catch(() => alert('Copy failed.'));
-});
-
-// Paste & parse
-pasteBtn.addEventListener('click', () => {
-  const input = prompt('Paste your report text here:');
-  if (input) parseAndPopulate(input);
-});
-
-function parseAndPopulate(text) {
-  // Tank Name
-  const tM = text.match(/🏷️\s*Tank Name:\s*(.+)/);
-  if (tM) tankNameInput.value = tM[1].trim();
-
-  // Harvest Count
-  const cM = text.match(/🔢\s*Harvest Count:\s*(\d+)/);
-  if (cM) { countInput.value = cM[1]; countModified = true; }
-
-  // Totals
-  const tot = text.match(/⚖️\s*Total Weight:\s*([\d.]+)/);
-  const net = text.match(/📏\s*Net Weight:\s*([\d.]+)/);
-  const fin = text.match(/📊\s*Final Weight:\s*([\d.]+)/);
-  const num = text.match(/🔢\s*Total Number:\s*([\d.]+)/);
-  if (tot) totalWeightEl.value = parseFloat(tot[1]).toFixed(2);
-  if (net) netWeightEl.value   = parseFloat(net[1]).toFixed(2);
-  if (fin) finalWeightEl.value = parseFloat(fin[1]).toFixed(2);
-  if (num) numberResultEl.value= parseFloat(num[1]).toFixed(2);
-
-  // Batch details
-  const lines = text.split('\n');
-  const start = lines.findIndex(l => l.includes('Batch Details'));
-  const detailLines = lines.slice(start+1).filter(l => /^\d+\./.test(l));
-
-  // Wipe old rows
-  weightsContainer.innerHTML = '';
-  detailLines.forEach(line => {
-    const m = line.match(/^\d+\.\s*([\d.]+)\s*kg\s*\(([^)]+)\)/);
-    if (m) {
-      addWeightRow();
-      const last = weightsContainer.lastElementChild;
-      last.querySelector('.weight-input').value = parseFloat(m[1]);
-      const trayTxt = m[2].trim();
-      const sel = last.querySelector('.tray-type');
-      Array.from(sel.options).forEach(o => { if (o.text === trayTxt) sel.value = o.value; });
-    }
-  });
-
-  updateRowNumbers();
-  updateCalculations();
+.modal-header {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:1rem;
 }
-
-// stub: include your original generatePrintContent(colorful) here unchanged
-function generatePrintContent(colorful = false) {
-  /* ... existing print logic ... */
+.close-modal {
+  background:none; border:none; color:#fff; font-size:1.5rem;
+  cursor:pointer;
 }
+.modal-content { margin-bottom:1rem; }
+.modal-actions { text-align:right; }
+.modal-actions button {
+  background:#2a9d8f; color:#fff; border:none;
+  padding:.8rem 1.2rem; border-radius:10px; cursor:pointer;
+  transition:.3s; display:inline-flex; align-items:center; gap:.5rem;
+}
+.modal-actions button:hover { background:#238f6a; }
 
-initializeWeights();
-updateCalculations();
+/* Print Styles */
+@media print {
+  /* hide interactive bits */
+  .action-buttons,
+  #add-row,
+  .delete-btn,
+  .modal-overlay {
+    display: none !important;
+  }
+
+  /* show print-area pages */
+  #print-area { display: block; }
+  #main-container, .modal-overlay { display: none; }
+
+  /* per-page styles */
+  .print-page {
+    width: 210mm; min-height: 297mm; margin: 10mm auto;
+    padding: 20mm; box-sizing: border-box;
+    page-break-after: always; background: white;
+  }
+  .print-page:last-child { page-break-after: auto; }
+
+  .print-header { text-align: center; margin-bottom: 20px; }
+  .print-header h1 { font-size: 24px; margin-bottom: 5px; }
+  .print-header .sub-info { font-size: 16px; }
+  .print-header .sub-info strong { font-weight: bold; color: #2a9d8f; }
+
+  .weights-grid { display: flex; gap: 10px; margin-bottom: 20px; }
+  .weights-column {
+    flex: 1; display: flex; flex-direction: column; gap: 4px;
+  }
+  .weights-column .cell {
+    border: 1px solid #ccc; padding: 4px; font-size: 12px;
+    min-height: 18px;
+  }
+  .divider { border-top: 1px dashed #000; margin: 10px 0; }
+  .totals-box {
+    border: 2px solid #000; padding: 10px;
+    font-size: 14px; text-align: center; margin-top: 10px;
+  }
+  .colorful .print-header h1 { color: #e76f51; }
+  .colorful .print-header .sub-info strong { color: #2a9d8f; }
+  .colorful .weights-column .cell {
+    border-color: #e9c46a; background: #f4a261; color: #fff;
+  }
+  .colorful .totals-box {
+    border-color: #e9c46a; background: #f4a261; color: #fff;
+  }
+}
