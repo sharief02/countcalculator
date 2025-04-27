@@ -45,6 +45,9 @@ function addWeightRow() {
   const sel = row.querySelector('.tray-type');
   const del = row.querySelector('.delete-btn');
 
+  // auto-select on focus
+  inp.addEventListener('focus', () => inp.select());
+
   inp.addEventListener('input', () => {
     updateRowFilled(row);
     updateCalculations();
@@ -96,6 +99,9 @@ function updateCalculations() {
 
   warning.style.display = (count <= 0 && !countModified) ? 'block' : 'none';
 }
+
+// auto-select count on focus
+countInput.addEventListener('focus', () => countInput.select());
 
 function generateReportString() {
   const name = tankNameInput.value || 'N/A';
@@ -172,28 +178,36 @@ copyBtn.addEventListener('click', () => {
 });
 
 // Paste & parse
-pasteBtn.addEventListener('click', () => {
-  const data = prompt('Paste your report text here:');
+pasteBtn.addEventListener('click', async () => {
+  let data = '';
+  try {
+    data = await navigator.clipboard.readText();
+  } catch {
+    data = prompt('Paste your report text here:');
+  }
   if (!data) return;
+  parseAndPopulate(data);
+});
 
-  // Tank name
-  const m1 = data.match(/🏷️\s*Tank Name:\s*(.+)/);
+function parseAndPopulate(text) {
+  // Tank Name
+  const m1 = text.match(/🏷️\s*Tank Name:\s*(.+)/);
   if (m1) tankNameInput.value = m1[1].trim();
-  // Harvest count
-  const m2 = data.match(/🔢\s*Harvest Count:\s*(\d+)/);
+  // Harvest Count
+  const m2 = text.match(/🔢\s*Harvest Count:\s*(\d+)/);
   if (m2) { countInput.value = m2[1]; countModified = true; }
   // Totals
-  const tot  = /⚖️\s*Total Weight:\s*([\d.]+)/.exec(data);
-  const net  = /📏\s*Net Weight:\s*([\d.]+)/.exec(data);
-  const fin  = /📊\s*Final Weight:\s*([\d.]+)/.exec(data);
-  const num  = /🔢\s*Total Number:\s*([\d.]+)/.exec(data);
+  const tot  = /⚖️\s*Total Weight:\s*([\d.]+)/.exec(text);
+  const net  = /📏\s*Net Weight:\s*([\d.]+)/.exec(text);
+  const fin  = /📊\s*Final Weight:\s*([\d.]+)/.exec(text);
+  const num  = /🔢\s*Total Number:\s*([\d.]+)/.exec(text);
   if (tot) totalWeightEl.value  = parseFloat(tot[1]).toFixed(2);
   if (net) netWeightEl.value    = parseFloat(net[1]).toFixed(2);
   if (fin) finalWeightEl.value  = parseFloat(fin[1]).toFixed(2);
   if (num) numberResultEl.value = parseFloat(num[1]).toFixed(2);
 
-  // Batch details
-  const lines   = data.split('\n');
+  // Batch Details
+  const lines   = text.split('\n');
   const start   = lines.findIndex(l => l.includes('Batch Details'));
   const details = lines.slice(start+1).filter(l => /^\d+\./.test(l));
 
@@ -210,16 +224,15 @@ pasteBtn.addEventListener('click', () => {
       });
     }
   });
+
   renumberRows();
   updateCalculations();
-});
+}
 
-// Generate the hidden print pages
+// Generate hidden print pages
 function generatePrintContent(colorful = false) {
   const printArea = document.getElementById('print-area');
   printArea.innerHTML = '';
-
-  // Gather filled entries
   const entries = [];
   weightsContainer.querySelectorAll('.weight-row').forEach((r, i) => {
     const w = parseFloat(r.querySelector('.weight-input').value);
@@ -239,7 +252,6 @@ function generatePrintContent(colorful = false) {
     totalNumber: numberResultEl.value
   };
 
-  // If no entries, one simple page
   if (entries.length === 0) {
     const page = document.createElement('div');
     page.className = colorful ? 'print-page colorful' : 'print-page';
@@ -261,13 +273,11 @@ function generatePrintContent(colorful = false) {
 
   const perPage = 80;
   const pages   = Math.ceil(entries.length / perPage);
-
   for (let p = 0; p < pages; p++) {
     const chunk = entries.slice(p * perPage, (p+1) * perPage);
     const page  = document.createElement('div');
     page.className = colorful ? 'print-page colorful' : 'print-page';
 
-    // Header
     const hdr = document.createElement('div');
     hdr.className = 'print-header';
     hdr.innerHTML = `
@@ -276,12 +286,10 @@ function generatePrintContent(colorful = false) {
     `;
     page.appendChild(hdr);
 
-    // Columns of entries
     const grid = document.createElement('div');
     grid.className = 'weights-grid';
     const perCol = 15;
     const cols   = Math.ceil(chunk.length / perCol);
-
     for (let c = 0; c < cols; c++) {
       const colDiv = document.createElement('div');
       colDiv.className = 'weights-column';
@@ -298,9 +306,10 @@ function generatePrintContent(colorful = false) {
     }
     page.appendChild(grid);
 
-    // Totals on last page
     if (p === pages - 1) {
-      page.appendChild(Object.assign(document.createElement('div'), { className: 'divider' }));
+      const div = document.createElement('div');
+      div.className = 'divider';
+      page.appendChild(div);
       const tb = document.createElement('div');
       tb.className = 'totals-box';
       tb.innerHTML = `
@@ -316,6 +325,6 @@ function generatePrintContent(colorful = false) {
   }
 }
 
-// Kick it off
+// Kick things off
 initializeWeights();
 updateCalculations();
