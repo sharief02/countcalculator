@@ -1,184 +1,321 @@
-/* Base & glassmorphism theme */
-* {
-  margin: 0; padding: 0; box-sizing: border-box;
-  font-family: 'Poppins', sans-serif;
-}
-body {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #1a4b8e, #1a4b8e);
-  display: flex; align-items: center; justify-content: center;
-  padding: 1rem;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
-.container {
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(15px);
-  border-radius: 20px;
-  padding: 2rem;
-  max-width: 900px; width: 100%;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-  border: 1px solid rgba(255,255,255,0.1);
-}
-.header { text-align: center; margin-bottom: 2rem; }
-.header h1 {
-  color: #fff; font-size: 2rem; margin-bottom: .5rem;
-  display: flex; align-items: center; justify-content: center;
-  gap:1rem; flex-wrap: wrap;
-}
-.header p { color: rgba(255,255,255,0.9); font-weight:300; font-size:.9rem; }
+const DEFAULT_MAX_WEIGHTS = 40;
+let countModified = false;
 
-.input-group-row {
-  display: grid; grid-template-columns: 1fr 1fr; gap:1.5rem;
-  margin-bottom:2rem;
-}
-.input-group label {
-  display:block; color: rgba(255,255,255,0.9);
-  margin-bottom:.5rem; font-size:.9rem;
-}
-input[type="text"], input[type="number"], select {
-  width:100%; padding:.8rem; border:none; border-radius:10px;
-  background: rgba(255,255,255,0.1); color:#fff; font-size:1rem;
-  transition:.3s;
-}
-input:focus, select:focus {
-  outline:none; background: rgba(255,255,255,0.2);
-  box-shadow: 0 0 0 2px #2a9d8f;
-}
-.warning {
-  display:none; margin-top:1rem; font-size:.9rem;
-  color:#ff6b6b; background:rgba(255,107,107,0.1);
-  padding:.8rem; border-radius:10px;
+// DOM refs
+const tankNameInput    = document.getElementById('tank-name');
+const countInput       = document.getElementById('count');
+const warning          = document.getElementById('warning');
+const weightsContainer = document.getElementById('weights-container');
+const addRowButton     = document.getElementById('add-row');
+const printBtn         = document.getElementById('print-btn');
+const whatsappBtn      = document.getElementById('whatsapp-btn');
+const copyBtn          = document.getElementById('copy-btn');
+const pasteBtn         = document.getElementById('paste-btn');
+const totalWeightEl    = document.getElementById('total-weight');
+const netWeightEl      = document.getElementById('net-weight');
+const finalWeightEl    = document.getElementById('final-weight');
+const numberResultEl   = document.getElementById('number-result');
+
+// Print modal refs
+const printOptionsModal = document.getElementById('print-options-modal');
+const closePrintModal   = document.getElementById('close-print-modal');
+const printBWBtn        = document.getElementById('print-bw');
+const printColorBtn     = document.getElementById('print-color');
+
+function initializeWeights() {
+  for (let i = 0; i < DEFAULT_MAX_WEIGHTS; i++) addWeightRow();
 }
 
-.weights-table {
-  background: rgba(255,255,255,0.05);
-  border-radius:15px; padding:1rem;
-  margin-bottom:1.5rem; overflow-x:auto;
-}
-.table-header, .weight-row {
-  display: grid; grid-template-columns: 60px minmax(120px,1fr) 130px 50px;
-  gap:1rem; padding:.8rem; min-width:500px;
-}
-.table-header { color: rgba(255,255,255,0.8); margin-bottom:.5rem; }
-.weight-row {
-  background: rgba(255,255,255,0.05); border-radius:10px;
-  margin-bottom:.5rem; transition:.3s;
-}
-.weight-row input, .weight-row select {
-  background: transparent; border:none; color:#fff;
-}
-.delete-btn {
-  background:none; border:none; color:#ff6b6b; font-size:1.2rem;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
-}
-#add-row {
-  width:100%; padding:.5rem; background:#2a9d8f; color:#fff;
-  border:none; border-radius:10px; font-size:1rem;
-  cursor:pointer; margin-top:1rem;
-}
-#add-row:hover { background:#238f6a; }
+function addWeightRow() {
+  const row = document.createElement('div');
+  row.className = 'weight-row';
+  row.setAttribute('data-filled', 'false');
+  row.innerHTML = `
+    <span>${weightsContainer.children.length + 1}</span>
+    <input type="number" class="weight-input" value="0" min="0" step="0.1">
+    <select class="tray-type">
+      <option value="2">Double Tray</option>
+      <option value="1">Single Tray</option>
+    </select>
+    <button class="delete-btn">×</button>
+  `;
+  weightsContainer.appendChild(row);
 
-.results-section {
-  background: rgba(255,255,255,0.05);
-  border:2px solid rgba(255,255,255,0.4);
-  border-radius:15px; padding:1.5rem; margin-top:2rem;
-}
-.result-item {
-  display:flex; justify-content:space-between; align-items:center;
-  background:rgba(255,255,255,0.05); border-radius:10px;
-  padding:.8rem; margin-bottom:.5rem; flex-wrap:wrap; gap:.5rem;
-}
-.result-item input {
-  background:none; border:none; color:#fff; font-size:1rem;
-  text-align:right; flex:1; width:100%;
+  const inp = row.querySelector('.weight-input');
+  const sel = row.querySelector('.tray-type');
+  const del = row.querySelector('.delete-btn');
+
+  inp.addEventListener('input', () => {
+    updateRowFilled(row);
+    updateCalculations();
+  });
+  sel.addEventListener('change', updateCalculations);
+  del.addEventListener('click', () => {
+    row.remove();
+    renumberRows();
+    updateCalculations();
+  });
 }
 
-.action-buttons {
-  display:flex; flex-wrap:wrap; gap:1rem; justify-content:center;
-  margin-top:2rem;
+function renumberRows() {
+  Array.from(weightsContainer.children).forEach((r, i) => {
+    r.querySelector('span').textContent = i + 1;
+  });
 }
-.action-buttons button {
-  flex:1; min-width:200px; background:#2a9d8f; color:#fff;
-  border:none; border-radius:10px; padding:.8rem 1.2rem;
-  font-size:.9rem; cursor:pointer; display:flex; align-items:center;
-  gap:.5rem; transition:.3s;
-}
-.action-buttons button:hover { background:#238f6a; }
 
-.modal-overlay {
-  position: fixed; top:0; left:0; width:100%; height:100%;
-  background: rgba(0,0,0,0.6); display:none;
-  align-items:center; justify-content:center; z-index:1000;
+function updateRowFilled(row) {
+  const w = parseFloat(row.querySelector('.weight-input').value);
+  row.setAttribute('data-filled', (!isNaN(w) && w > 0) ? 'true' : 'false');
 }
-.modal {
-  background: rgba(255,255,255,0.1); backdrop-filter: blur(15px);
-  border-radius:20px; padding:1.5rem; width:90%; max-width:500px;
-  box-shadow:0 8px 32px rgba(0,0,0,0.2); color:#fff;
-}
-.modal-header {
-  display:flex; justify-content:space-between; align-items:center;
-  margin-bottom:1rem;
-}
-.close-modal {
-  background:none; border:none; color:#fff; font-size:1.5rem;
-  cursor:pointer;
-}
-.modal-content { margin-bottom:1rem; }
-.modal-actions { text-align:right; }
-.modal-actions button {
-  background:#2a9d8f; color:#fff; border:none;
-  padding:.8rem 1.2rem; border-radius:10px; cursor:pointer;
-  transition:.3s; display:inline-flex; align-items:center; gap:.5rem;
-}
-.modal-actions button:hover { background:#238f6a; }
 
-/* Print Styles */
-@media print {
-  /* hide interactive bits */
-  .action-buttons,
-  #add-row,
-  .delete-btn,
-  .modal-overlay {
-    display: none !important;
+function updateCalculations() {
+  const count = parseInt(countInput.value, 10);
+  let totalW = 0, totalTrays = 0;
+
+  Array.from(weightsContainer.children).forEach(row => {
+    const w = parseFloat(row.querySelector('.weight-input').value) || 0;
+    const f = parseFloat(row.querySelector('.tray-type').value);
+    updateRowFilled(row);
+    if (w > 0) {
+      totalW += w;
+      totalTrays += f;
+      row.querySelector('.weight-input').classList.remove('invalid');
+    } else {
+      row.querySelector('.weight-input').classList.add('invalid');
+    }
+  });
+
+  const netW    = totalTrays * 1.8;
+  const finalW  = totalW - netW;
+  const totalN  = (isNaN(count) || count <= 0) ? 0 : finalW * count;
+
+  totalWeightEl.value  = totalW.toFixed(2);
+  netWeightEl.value    = netW.toFixed(2);
+  finalWeightEl.value  = finalW.toFixed(2);
+  numberResultEl.value = totalN.toFixed(2);
+
+  warning.style.display = (count <= 0 && !countModified) ? 'block' : 'none';
+}
+
+function generateReportString() {
+  const name = tankNameInput.value || 'N/A';
+  const cnt  = countInput.value  || '0';
+  const tW   = totalWeightEl.value;
+  const nW   = netWeightEl.value;
+  const fW   = finalWeightEl.value;
+  const tN   = numberResultEl.value;
+
+  let rpt = "🦐 *Aquaculture Harvest Report* 🦐\n";
+      rpt += `🏷️ Tank Name: ${name}\n`;
+      rpt += `🔢 Harvest Count: ${cnt}\n`;
+      rpt += `⚖️ Total Weight: ${tW} kg\n`;
+      rpt += `📏 Net Weight: ${nW} kg\n`;
+      rpt += `📊 Final Weight: ${fW} kg\n`;
+      rpt += `🔢 Total Number: ${tN}\n\n`;
+      rpt += "📋 *Batch Details:*\n";
+
+  Array.from(weightsContainer.children).forEach((row, i) => {
+    const w = parseFloat(row.querySelector('.weight-input').value) || 0;
+    if (w > 0) {
+      const txt = row.querySelector('.tray-type').selectedOptions[0].text;
+      rpt += `${i+1}. ${w} kg (${txt})\n`;
+    }
+  });
+
+  return rpt;
+}
+
+// — Event listeners —
+addRowButton.addEventListener('click', () => {
+  addWeightRow();
+  updateCalculations();
+});
+countInput.addEventListener('input', () => {
+  countModified = true;
+  updateCalculations();
+});
+
+// Print flow
+printBtn.addEventListener('click', () => {
+  printOptionsModal.style.display = 'flex';
+});
+closePrintModal.addEventListener('click', () => {
+  printOptionsModal.style.display = 'none';
+});
+printBWBtn.addEventListener('click', () => {
+  printOptionsModal.style.display = 'none';
+  generatePrintContent(false);
+  setTimeout(() => window.print(), 300);
+});
+printColorBtn.addEventListener('click', () => {
+  printOptionsModal.style.display = 'none';
+  const originalTitle = document.title;
+  document.title = `${tankNameInput.value || 'Untitled'} - Aquaculture Harvest Report`;
+  generatePrintContent(true);
+  setTimeout(() => {
+    window.print();
+    document.title = originalTitle;
+  }, 300);
+});
+
+// WhatsApp share
+whatsappBtn.addEventListener('click', () => {
+  const txt = encodeURIComponent(generateReportString());
+  window.open(`https://wa.me/?text=${txt}`, '_blank');
+});
+
+// Copy to clipboard
+copyBtn.addEventListener('click', () => {
+  navigator.clipboard.writeText(generateReportString())
+    .then(() => alert('Report copied to clipboard!'))
+    .catch(() => alert('Copy failed.'));
+});
+
+// Paste & parse
+pasteBtn.addEventListener('click', () => {
+  const data = prompt('Paste your report text here:');
+  if (!data) return;
+
+  // Tank name
+  const m1 = data.match(/🏷️\s*Tank Name:\s*(.+)/);
+  if (m1) tankNameInput.value = m1[1].trim();
+  // Harvest count
+  const m2 = data.match(/🔢\s*Harvest Count:\s*(\d+)/);
+  if (m2) { countInput.value = m2[1]; countModified = true; }
+  // Totals
+  const tot  = /⚖️\s*Total Weight:\s*([\d.]+)/.exec(data);
+  const net  = /📏\s*Net Weight:\s*([\d.]+)/.exec(data);
+  const fin  = /📊\s*Final Weight:\s*([\d.]+)/.exec(data);
+  const num  = /🔢\s*Total Number:\s*([\d.]+)/.exec(data);
+  if (tot) totalWeightEl.value  = parseFloat(tot[1]).toFixed(2);
+  if (net) netWeightEl.value    = parseFloat(net[1]).toFixed(2);
+  if (fin) finalWeightEl.value  = parseFloat(fin[1]).toFixed(2);
+  if (num) numberResultEl.value = parseFloat(num[1]).toFixed(2);
+
+  // Batch details
+  const lines   = data.split('\n');
+  const start   = lines.findIndex(l => l.includes('Batch Details'));
+  const details = lines.slice(start+1).filter(l => /^\d+\./.test(l));
+
+  weightsContainer.innerHTML = '';
+  details.forEach(line => {
+    const m = /^\d+\.\s*([\d.]+)\s*kg\s*\(([^)]+)\)/.exec(line);
+    if (m) {
+      addWeightRow();
+      const last = weightsContainer.lastElementChild;
+      last.querySelector('.weight-input').value = parseFloat(m[1]);
+      const sel = last.querySelector('.tray-type');
+      Array.from(sel.options).forEach(o => {
+        if (o.text === m[2].trim()) sel.value = o.value;
+      });
+    }
+  });
+  renumberRows();
+  updateCalculations();
+});
+
+// Generate the hidden print pages
+function generatePrintContent(colorful = false) {
+  const printArea = document.getElementById('print-area');
+  printArea.innerHTML = '';
+
+  // Gather filled entries
+  const entries = [];
+  weightsContainer.querySelectorAll('.weight-row').forEach((r, i) => {
+    const w = parseFloat(r.querySelector('.weight-input').value);
+    if (!isNaN(w) && w > 0) {
+      const tray = r.querySelector('.tray-type').selectedOptions[0].text;
+      entries.push({ index: i+1, weight: w, trayType: tray });
+    }
+  });
+
+  const title = "Ksheera Rama Aqua Harvest Report";
+  const tank  = tankNameInput.value || "N/A";
+  const cnt   = countInput.value     || "0";
+  const totals = {
+    totalWeight: totalWeightEl.value,
+    netWeight:   netWeightEl.value,
+    finalWeight: finalWeightEl.value,
+    totalNumber: numberResultEl.value
+  };
+
+  // If no entries, one simple page
+  if (entries.length === 0) {
+    const page = document.createElement('div');
+    page.className = colorful ? 'print-page colorful' : 'print-page';
+    page.innerHTML = `
+      <div class="print-header">
+        <h1>${title}</h1>
+        <div class="sub-info">Tank Name: <strong>${tank}</strong> | Harvest Count: ${cnt}</div>
+      </div>
+      <div class="totals-box">
+        <div>Total Weight: ${totals.totalWeight} kg</div>
+        <div>Net Weight: ${totals.netWeight} kg</div>
+        <div>Final Weight: ${totals.finalWeight} kg</div>
+        <div>Total Number: ${totals.totalNumber}</div>
+      </div>
+    `;
+    printArea.appendChild(page);
+    return;
   }
 
-  /* show print-area pages */
-  #print-area { display: block; }
-  #main-container, .modal-overlay { display: none; }
+  const perPage = 80;
+  const pages   = Math.ceil(entries.length / perPage);
 
-  /* per-page styles */
-  .print-page {
-    width: 210mm; min-height: 297mm; margin: 10mm auto;
-    padding: 20mm; box-sizing: border-box;
-    page-break-after: always; background: white;
-  }
-  .print-page:last-child { page-break-after: auto; }
+  for (let p = 0; p < pages; p++) {
+    const chunk = entries.slice(p * perPage, (p+1) * perPage);
+    const page  = document.createElement('div');
+    page.className = colorful ? 'print-page colorful' : 'print-page';
 
-  .print-header { text-align: center; margin-bottom: 20px; }
-  .print-header h1 { font-size: 24px; margin-bottom: 5px; }
-  .print-header .sub-info { font-size: 16px; }
-  .print-header .sub-info strong { font-weight: bold; color: #2a9d8f; }
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'print-header';
+    hdr.innerHTML = `
+      <h1>${title}</h1>
+      <div class="sub-info">Tank Name: <strong>${tank}</strong> | Harvest Count: ${cnt}</div>
+    `;
+    page.appendChild(hdr);
 
-  .weights-grid { display: flex; gap: 10px; margin-bottom: 20px; }
-  .weights-column {
-    flex: 1; display: flex; flex-direction: column; gap: 4px;
-  }
-  .weights-column .cell {
-    border: 1px solid #ccc; padding: 4px; font-size: 12px;
-    min-height: 18px;
-  }
-  .divider { border-top: 1px dashed #000; margin: 10px 0; }
-  .totals-box {
-    border: 2px solid #000; padding: 10px;
-    font-size: 14px; text-align: center; margin-top: 10px;
-  }
-  .colorful .print-header h1 { color: #e76f51; }
-  .colorful .print-header .sub-info strong { color: #2a9d8f; }
-  .colorful .weights-column .cell {
-    border-color: #e9c46a; background: #f4a261; color: #fff;
-  }
-  .colorful .totals-box {
-    border-color: #e9c46a; background: #f4a261; color: #fff;
+    // Columns of entries
+    const grid = document.createElement('div');
+    grid.className = 'weights-grid';
+    const perCol = 15;
+    const cols   = Math.ceil(chunk.length / perCol);
+
+    for (let c = 0; c < cols; c++) {
+      const colDiv = document.createElement('div');
+      colDiv.className = 'weights-column';
+      for (let r = 0; r < perCol; r++) {
+        const idx = c * perCol + r;
+        if (idx >= chunk.length) break;
+        const e = chunk[idx];
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.textContent = `${e.index}. ${e.weight} kg (${e.trayType})`;
+        colDiv.appendChild(cell);
+      }
+      grid.appendChild(colDiv);
+    }
+    page.appendChild(grid);
+
+    // Totals on last page
+    if (p === pages - 1) {
+      page.appendChild(Object.assign(document.createElement('div'), { className: 'divider' }));
+      const tb = document.createElement('div');
+      tb.className = 'totals-box';
+      tb.innerHTML = `
+        <div>Total Weight: ${totals.totalWeight} kg</div>
+        <div>Net Weight: ${totals.netWeight} kg</div>
+        <div>Final Weight: ${totals.finalWeight} kg</div>
+        <div>Total Number: ${totals.totalNumber}</div>
+      `;
+      page.appendChild(tb);
+    }
+
+    printArea.appendChild(page);
   }
 }
+
+// Kick it off
+initializeWeights();
+updateCalculations();
